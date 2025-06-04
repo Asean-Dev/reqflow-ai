@@ -1,7 +1,13 @@
 import { useMemo } from "react";
 import useSWR, { mutate } from "swr";
-import axios, { endpoints, fetcher } from "../../../../utils/axios";
+
+import axiosServer, { endpoints, fetcher } from "../../../../utils/axios";
 import { IChatConversation, IChatMessage } from "./types";
+import { mapResponseToMessageData } from "../../../../utils/map-message-agent";
+import {
+  addContext,
+  getContextFromLocalStorage,
+} from "../../../../utils/local-storage";
 
 export function keyBy<T>(
   array: T[],
@@ -17,11 +23,11 @@ export function keyBy<T>(
 }
 const CHART_ENDPOINT = endpoints.chat;
 
-const enableServer = false;
+const enableServer = true;
 const swrOptions = {
-  revalidateIfStale: enableServer,
-  revalidateOnFocus: enableServer,
-  revalidateOnReconnect: enableServer,
+  revalidateIfStale: false,
+  revalidateOnFocus: false,
+  revalidateOnReconnect: false,
 };
 
 type ConversationData = {
@@ -91,66 +97,51 @@ export async function sendMessage(
   conversationId: string,
   messageData: IChatMessage
 ) {
-  const conversationsUrl = [
-    CHART_ENDPOINT,
-    { params: { endpoint: "conversations" } },
-  ];
-
   const conversationUrl = [
     CHART_ENDPOINT,
     { params: { conversationId, endpoint: "conversation" } },
   ];
 
+  console.log("messageData", messageData);
   /**
    * Work on server
    */
-  if (enableServer) {
-    const data = { conversationId, messageData };
-    await axios.put(CHART_ENDPOINT, data);
-  }
-
-  /**
-   * Work in local
-   */
   mutate(
     conversationUrl,
-    (currentData) => {
-      if (!currentData || !currentData.conversation) {
-        return {
-          conversation: { id: conversationId, messages: [messageData] },
-        };
-      }
-      const currentConversation: IChatConversation = currentData.conversation;
-      const conversation = {
-        ...currentConversation,
-        messages: [...currentConversation.messages, messageData],
-      };
-      return { ...currentData, conversation };
-    },
+    (currentData) => ({
+      ...(currentData ?? {}),
+      conversation: {
+        ...(currentData?.conversation ?? {}),
+        messages: [...(currentData?.conversation?.messages ?? []), messageData],
+      },
+    }),
     false
   );
 
-  mutate(
-    conversationsUrl,
-    (currentData) => {
-      console.log("currentData", currentData);
-      if (!currentData || !currentData.conversations) return currentData;
+  // 2. ส่งไป server แล้ว set ข้อความที่ได้จาก API ตามหลัง
+  if (enableServer && messageData.senderId === "user") {
+    const contextStorage = getContextFromLocalStorage();
+    console.log("contextStorage", contextStorage);
+    const data = {
+      conversation: messageData.body,
+      fields: contextStorage?.context || {},
+    };
 
-      const currentConversations: IChatConversation[] =
-        currentData.conversations;
-
-      const conversations: IChatConversation[] = currentConversations.map(
-        (conversation: IChatConversation) =>
-          conversation.id === conversationId
-            ? {
-                ...conversation,
-                messages: [...conversation.messages, messageData],
-              }
-            : conversation
-      );
-
-      return { ...currentData, conversations };
-    },
-    false
-  );
+    const response = await axiosServer.post(endpoints.agent, data);
+    console.log("response", response);
+    const message = mapResponseToMessageData(response.data.agent_message);
+    addContext(response.data.fields);
+    console.log("message", message);
+    mutate(
+      conversationUrl,
+      (currentData) => ({
+        ...currentData,
+        conversation: {
+          ...currentData.conversation,
+          messages: [...currentData.conversation.messages, message],
+        },
+      }),
+      false
+    );
+  }
 }

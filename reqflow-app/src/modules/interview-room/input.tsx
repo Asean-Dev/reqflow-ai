@@ -44,13 +44,13 @@ export function InterviewRoomInput({
         const messageData = {
           id: uuidv4(),
           body: message,
-          senderId: user.id,
+          senderId: "user",
           contentType: "text",
           createdAt: fSub({ minutes: 1 }),
           attachments: [],
         };
-        await sendMessage(selectedConversationId, messageData);
         setMessage("");
+        await sendMessage(selectedConversationId, messageData);
       }
     },
     [message, selectedConversationId, user.id]

@@ -6,7 +6,7 @@ import { CONFIG } from "../config-global";
 
 // ----------------------------------------------------------------------
 
-const axiosInstance = axios.create({ baseURL: CONFIG.site.serverUrl });
+const axiosInstance = axios.create({ baseURL: CONFIG.site.apiUrl });
 
 axiosInstance.interceptors.response.use(
   (response) => response,
@@ -37,4 +37,5 @@ export const fetcher = async (args: string | [string, AxiosRequestConfig]) => {
 
 export const endpoints = {
   chat: "/api/chat",
+  agent: "/converse",
 };

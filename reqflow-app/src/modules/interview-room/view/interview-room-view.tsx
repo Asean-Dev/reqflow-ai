@@ -12,6 +12,8 @@ import { useEffect } from "react";
 import { InterviewRoomInput } from "../input";
 import { Layout } from "../layout";
 import { InterviewRoomMain } from "../main";
+import { uuidv4 } from "../../../../utils/uuidv4";
+import { removeFromContext } from "../../../../utils/local-storage";
 
 export function InterviewRoomView() {
   const searchParams = useSearchParams();
@@ -25,14 +27,15 @@ export function InterviewRoomView() {
     if (conversation) {
       const handleSendMessage = async () => {
         await sendMessage(selectedConversationId, {
-          id: "1",
-          body: "สวัสดีครับ มีอะไรช่วยไหม?",
-          senderId: "1",
+          id: uuidv4(),
+          body: "ขอข้อมูลเบื้องต้นสำหรับเก็บ Requirement โปรดตอบคำถามตามนี้ครับ…",
+          senderId: "agent",
           contentType: "text",
           createdAt: dayjs().toISOString(),
           attachments: [],
         });
       };
+      removeFromContext();
       handleSendMessage();
     }
   }, []);

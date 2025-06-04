@@ -16,8 +16,7 @@ type Props = {
 export function ChatMessageItem({ message }: Props) {
   const { me, senderDetails, hasImage } = useMessage({
     message,
-
-    currentUserId: `me`,
+    currentUserId: `user`,
   });
 
   const { firstName, avatarUrl } = senderDetails;
