@@ -71,6 +71,7 @@ def authenticate_user(db, username: str, password: str):
 
 @router.post("/login")
 async def login(form: LoginRequest, response: Response):
+    print("form", form)
     user = authenticate_user(fake_users_db, form.email, form.password)
     print("user", user)
     if not user:

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, UploadFile, Depends, Request
 from pydantic import BaseModel
 from typing import Optional, Dict
 from langchain_openai import ChatOpenAI
@@ -6,6 +6,9 @@ from langchain.prompts import PromptTemplate
 from utils import load_manday_matrix, calc_total_manday, generate_pdf
 import os
 from fastapi.responses import FileResponse
+from auth_guard import get_current_user
+import jwt
+from fastapi import HTTPException, status
 
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY", "sk-yourkey")
 router = APIRouter()
@@ -108,7 +111,9 @@ def agent_llm_reply(next_field: str, state: ConversationState) -> str:
 
 
 @router.post("/converse")
-async def converse(state: ConversationState):
+async def converse(
+    state: ConversationState, current_user: str = Depends(get_current_user)
+):
     user_answer = state.conversation.strip() if state.conversation else ""
     fields = state.fields.copy()
 
@@ -126,10 +131,14 @@ async def converse(state: ConversationState):
                 if not fields.get(f):
                     reply = f"ขอข้อมูลเพิ่มเติมเกี่ยวกับ '{FIELD_QUESTIONS[f]}' ด้วยครับ"
                     return {
-                        "agent_message": reply,
-                        "question": FIELD_QUESTIONS[f],
-                        "field": f,
-                        "fields": fields,
+                        "code": 200,
+                        "status": "success",
+                        "data": {
+                            "agent_message": reply,
+                            "question": FIELD_QUESTIONS[f],
+                            "field": f,
+                            "fields": fields,
+                        },
                     }
 
     # หา field ถัดไปที่ยังไม่ได้ตอบ
@@ -139,11 +148,16 @@ async def converse(state: ConversationState):
                 f, ConversationState(conversation="", fields=fields)
             )
             return {
-                "agent_message": agent_reply,
-                "question": FIELD_QUESTIONS[f],
-                "field": f,
-                "fields": fields,  # ส่ง fields ล่าสุด (update แล้ว) กลับไปให้ user
+                "code": 200,
+                "status": "success",
+                "data": {
+                    "agent_message": agent_reply,
+                    "question": FIELD_QUESTIONS[f],
+                    "field": f,
+                    "fields": fields,  # ส่ง fields ล่าสุด (update แล้ว) กลับไปให้ user
+                },
             }
+
     # ครบทุก field แล้ว
     # 1. สรุป scope summary
     scope_summary = {k: v for k, v in fields.items() if k in REQUIRED_FIELDS}
@@ -156,20 +170,34 @@ async def converse(state: ConversationState):
     total_manday = calc_total_manday(manday_matrix)
 
     # 3. สร้าง PDF
-    sow_pdf_path = generate_pdf(scope_summary, filename="SoW.pdf")
+    company_name = scope_summary.get("company")
+    if company_name:
+        safe_company = company_name.strip().replace(" ", "_")
+        pdf_filename = f"{safe_company}.pdf"
+    else:
+        pdf_filename = "SoW.pdf"
+
+    sow_pdf_path = generate_pdf(scope_summary, filename=pdf_filename)
 
     return {
-        "agent_message": "ขอบคุณสำหรับข้อมูลครับ ทีมงานจะนำข้อมูลไปดำเนินการต่อ",
-        "fields": fields,
-        "scope_summary": scope_summary,
-        "manday_matrix": manday_matrix,
-        "total_manday": total_manday,
-        "sow_pdf_path": sow_pdf_path,  # path ไปยังไฟล์ PDF ที่ generate แล้ว
+        "code": 200,
+        "status": "success",
+        "data": {
+            "agent_message": "ขอบคุณสำหรับข้อมูลครับ ทีมงานจะนำข้อมูลไปดำเนินการต่อ",
+            "fields": fields,
+            "question": "ขอบคุณสำหรับข้อมูลครับ ทีมงานจะนำข้อมูลไปดำเนินการต่อ",
+            "success": True,
+            "scope_summary": scope_summary,
+            "manday_matrix": manday_matrix,
+            "total_manday": total_manday,
+            "sow_pdf_path": sow_pdf_path,  # path ไปยังไฟล์ PDF ที่ generate แล้ว
+        },
     }
 
 
 @router.get("/download-sow")
 def download_sow(pdf_name: str = "SoW.pdf"):
+    print("pdf_name", pdf_name)
     pdf_path = os.path.join(os.getcwd(), pdf_name)
     if not os.path.exists(pdf_path):
         return {"error": "ไม่พบไฟล์ PDF"}

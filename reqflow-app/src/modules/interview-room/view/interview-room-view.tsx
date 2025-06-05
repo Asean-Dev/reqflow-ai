@@ -14,6 +14,8 @@ import { Layout } from "../layout";
 import { InterviewRoomMain } from "../main";
 import { uuidv4 } from "../../../../utils/uuidv4";
 import { removeFromContext } from "../../../../utils/local-storage";
+import { SignInView } from "@/modules/sign-in/view/sign-in-view";
+import { getCookie } from "../../../../utils/token";
 
 export function InterviewRoomView() {
   const searchParams = useSearchParams();
@@ -43,6 +45,7 @@ export function InterviewRoomView() {
   return (
     <Container>
       <Card sx={{ width: "100%", p: 2 }}>
+        <SignInView />
         <Typography variant="h1">Chat with AI</Typography>
         <Divider sx={{ mb: 2 }} />
         <Layout

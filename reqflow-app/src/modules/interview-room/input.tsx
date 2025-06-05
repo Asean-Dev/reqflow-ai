@@ -10,6 +10,8 @@ import { Icons } from "@/icons";
 import { sendMessage } from "./actions";
 import { fSub } from "../../../utils/format-time";
 import { uuidv4 } from "../../../utils/uuidv4";
+import { InterviewRoomDialog } from "./dialog";
+import { useBoolean } from "@/hooks/use-boolean";
 
 // import { Iconify } from "src/components/iconify";
 
@@ -28,6 +30,18 @@ export function InterviewRoomInput({
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
+  const isSummary = useBoolean(false);
+  const [summary, setSummary] = useState<
+    | {
+        companyName: string;
+        businessProblem: string;
+        budget: string;
+        purpose: string;
+        scopeSummary: string;
+        sowPdfPath: string;
+      }
+    | {}
+  >({});
   // สมมติคุณมี user context
   const user = { id: "me" }; // เปลี่ยนเป็น useMockedUser หรือ context จริง
 
@@ -50,7 +64,16 @@ export function InterviewRoomInput({
           attachments: [],
         };
         setMessage("");
-        await sendMessage(selectedConversationId, messageData);
+        const response = await sendMessage(selectedConversationId, messageData);
+        if (response?.data?.success) {
+          setSummary({
+            ...response.data.fields,
+            ...(response.data.sow_pdf_path && {
+              sowPdfPath: response.data.sow_pdf_path,
+            }),
+          });
+          isSummary.onTrue();
+        }
       }
     },
     [message, selectedConversationId, user.id]
@@ -58,6 +81,7 @@ export function InterviewRoomInput({
 
   return (
     <Stack direction="row" sx={{ width: 1 }}>
+      <InterviewRoomDialog data={summary} isOpen={isSummary} />
       <InputBase
         name="chat-message"
         id="chat-message-input"

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import useSWR, { mutate } from "swr";
+import Cookies from "js-cookie";
 
 import axiosServer, { endpoints, fetcher } from "../../../../utils/axios";
 import { IChatConversation, IChatMessage } from "./types";
@@ -8,6 +9,7 @@ import {
   addContext,
   getContextFromLocalStorage,
 } from "../../../../utils/local-storage";
+import { getCookie } from "../../../../utils/token";
 
 export function keyBy<T>(
   array: T[],
@@ -118,19 +120,25 @@ export async function sendMessage(
     false
   );
 
-  // 2. ส่งไป server แล้ว set ข้อความที่ได้จาก API ตามหลัง
   if (enableServer && messageData.senderId === "user") {
     const contextStorage = getContextFromLocalStorage();
+    const token = getCookie("token");
+    console.log("token", token);
     console.log("contextStorage", contextStorage);
     const data = {
       conversation: messageData.body,
       fields: contextStorage?.context || {},
     };
 
-    const response = await axiosServer.post(endpoints.agent, data);
+    const response = await axiosServer.post(endpoints.agent, data, {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+        "Content-Type": "application/json",
+      },
+    });
     console.log("response", response);
-    const message = mapResponseToMessageData(response.data.agent_message);
-    addContext(response.data.fields);
+    const message = mapResponseToMessageData(response.data.data.question);
+    addContext(response.data.data.fields);
     console.log("message", message);
     mutate(
       conversationUrl,
@@ -143,5 +151,8 @@ export async function sendMessage(
       }),
       false
     );
+    if (response.data.code === 200) {
+      return response.data;
+    }
   }
 }

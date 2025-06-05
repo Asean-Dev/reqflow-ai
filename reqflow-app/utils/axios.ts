@@ -38,4 +38,5 @@ export const fetcher = async (args: string | [string, AxiosRequestConfig]) => {
 export const endpoints = {
   chat: "/api/chat",
   agent: "/converse",
+  signIn: "/login",
 };
