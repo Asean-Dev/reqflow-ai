@@ -72,7 +72,12 @@ export function SignInView() {
             {isSignIn ? "Sign In" : "Sign In Success"}
           </Typography>
           <Tooltip
-            title="การลงชื่อเข้าใช้งานเพื่อขอ TOKEN ในการ คุย AI Chatbot เท่านั้น ใช้อะไรก็ได้"
+            title={
+              <Typography variant="body1">
+                User : admin@email.com <br />
+                Password : admin123
+              </Typography>
+            }
             placement="left"
           >
             <Icons.alert />

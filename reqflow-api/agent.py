@@ -10,7 +10,7 @@ from auth_guard import get_current_user
 import jwt
 from fastapi import HTTPException, status
 
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY", "sk-yourkey")
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 router = APIRouter()
 
 REQUIRED_FIELDS = [
@@ -92,7 +92,6 @@ def map_purpose_answer(answer: str) -> str:
 
 
 def agent_llm_reply(next_field: str, state: ConversationState) -> str:
-    # ให้ LLM สร้างคำถามใหม่ ไม่ซ้ำ สั้นๆ
     system_prompt = """
     คุณคือผู้ช่วย AI สำหรับการเก็บ Requirement โปรเจค IT
     - ถามคำถามใหม่สำหรับ field ที่ระบุ โดยให้ถามสั้น กระชับ และอย่าใช้ประโยคซ้ำ
@@ -117,7 +116,6 @@ async def converse(
     user_answer = state.conversation.strip() if state.conversation else ""
     fields = state.fields.copy()
 
-    # ถ้า user ตอบมารอบนี้ (conversation มีข้อความ) ให้เดา field
     if user_answer:
         field_name = guess_field_from_answer(user_answer, fields)
         if field_name:
@@ -141,7 +139,6 @@ async def converse(
                         },
                     }
 
-    # หา field ถัดไปที่ยังไม่ได้ตอบ
     for f in REQUIRED_FIELDS:
         if not fields.get(f):
             agent_reply = agent_llm_reply(
@@ -158,18 +155,14 @@ async def converse(
                 },
             }
 
-    # ครบทุก field แล้ว
-    # 1. สรุป scope summary
     scope_summary = {k: v for k, v in fields.items() if k in REQUIRED_FIELDS}
 
-    # 2. โหลด manday matrix (หรือใช้ mock ถ้าไม่มีไฟล์)
     try:
         manday_matrix = load_manday_matrix()
     except Exception:
         manday_matrix = {"tasks": [{"name": "default", "manday": 0}]}
     total_manday = calc_total_manday(manday_matrix)
 
-    # 3. สร้าง PDF
     company_name = scope_summary.get("company")
     if company_name:
         safe_company = company_name.strip().replace(" ", "_")
