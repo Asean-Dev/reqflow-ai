@@ -70,3 +70,12 @@
 ### FLOW CLICK (https://www.mermaidchart.com/app/projects/8805f5ce-ae77-4c0e-974d-b4bf4db5d35a/diagrams/0b76f2bc-179b-43bb-a2ba-24571ab893b2/version/v0.1/edit?pluginSource=none)
 
 ---
+
+## ENV
+
+```
+SECRET_KEY='secret'
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+OPENAI_API_KEY="sk-key"
+```
